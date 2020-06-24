@@ -22,7 +22,7 @@ lazy val microservice = Project(appName, file("."))
   )
   .settings(publishingSettings: _*)
   .settings(resolvers += Resolver.jcenterRepo)
-  .settings(PlayKeys.playDefaultPort := 9480)
+  .settings(PlayKeys.playDefaultPort := 9489)
   .settings(scoverageSettings: _*)
   .settings(
     scalacOptions += "-Ypartial-unification"

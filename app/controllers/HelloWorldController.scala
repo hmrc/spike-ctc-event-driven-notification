@@ -20,10 +20,12 @@ import javax.inject.Inject
 import play.api.mvc.Action
 import play.api.mvc.AnyContent
 import play.api.mvc.ControllerComponents
+import play.modules.reactivemongo.ReactiveMongoApi
 import uk.gov.hmrc.play.bootstrap.controller.BackendController
 
 class HelloWorldController @Inject()(
-  cc: ControllerComponents
+  cc: ControllerComponents,
+  mongo: ReactiveMongoApi
 ) extends BackendController(cc) {
 
   def get(): Action[AnyContent] = Action(Ok("Hello World"))
