@@ -1,3 +1,3 @@
 # microservice specific routes
 
-POST    /hello-world        controllers.HelloWorldController.get()
+GET    /hello-world/:value        controllers.HelloWorldController.get(value: String)

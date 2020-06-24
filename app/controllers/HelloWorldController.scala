@@ -16,18 +16,60 @@
 
 package controllers
 
+import java.time.LocalDate
+import java.time.LocalDateTime
+
 import javax.inject.Inject
+import play.api.libs.json.Json
+import play.api.libs.json.OFormat
 import play.api.mvc.Action
 import play.api.mvc.AnyContent
 import play.api.mvc.ControllerComponents
+import play.api.mvc.DefaultActionBuilder
 import play.modules.reactivemongo.ReactiveMongoApi
+import reactivemongo.api.commands.WriteResult
+import reactivemongo.play.json.collection.JSONCollection
 import uk.gov.hmrc.play.bootstrap.controller.BackendController
+
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+
+object MongoCollection {
+  val collection = "test"
+}
+
+case class TestData(a: String, date: LocalDateTime)
+
+object TestData extends MongoLocalDateTimeFormat {
+  implicit val formats: OFormat[TestData] = Json.format[TestData]
+}
 
 class HelloWorldController @Inject()(
   cc: ControllerComponents,
-  mongo: ReactiveMongoApi
-) extends BackendController(cc) {
+  mongo: ReactiveMongoApi,
+  defaultActionBuilder: DefaultActionBuilder
+)(implicit ec: ExecutionContext)
+    extends BackendController(cc) {
 
-  def get(): Action[AnyContent] = Action(Ok("Hello World"))
+  def get(value: String): Action[AnyContent] = defaultActionBuilder.async {
+
+    val newTestData = TestData(value, LocalDateTime.now())
+
+    insert(newTestData).map {
+      _ =>
+        Created(s"Created new record for `${newTestData.a}` with timestamp `${newTestData.date}``")
+    }
+  }
+
+  private def insert(data: TestData): Future[WriteResult] = {
+    import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
+
+    def collection: Future[JSONCollection] =
+      mongo.database.map(_.collection[JSONCollection](MongoCollection.collection))
+
+    val jsonData = Json.toJsObject(data)
+
+    collection.flatMap(_.insert(false).one(jsonData))
+  }
 
 }
