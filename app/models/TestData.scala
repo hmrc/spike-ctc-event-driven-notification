@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package config
+package models
 
-import com.google.inject.AbstractModule
-import workers.LogginWorker
+import java.time.LocalDateTime
 
-class Module extends AbstractModule {
+import controllers.MongoLocalDateTimeFormat
+import play.api.libs.json.Json
+import play.api.libs.json.OFormat
 
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[LogginWorker]).asEagerSingleton()
-  }
+case class TestData(a: String, date: LocalDateTime)
 
+object TestData extends MongoLocalDateTimeFormat {
+  implicit val formats: OFormat[TestData] = Json.format[TestData]
 }

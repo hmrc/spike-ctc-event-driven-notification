@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-package config
+package models
 
-import com.google.inject.AbstractModule
-import workers.LogginWorker
-
-class Module extends AbstractModule {
-
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[LogginWorker]).asEagerSingleton()
-  }
-
+object MongoCollection {
+  val collection = "test"
 }

@@ -20,6 +20,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 import javax.inject.Inject
+import models.MongoCollection
+import models.TestData
 import play.api.libs.json.Json
 import play.api.libs.json.OFormat
 import play.api.mvc.Action
@@ -33,16 +35,6 @@ import uk.gov.hmrc.play.bootstrap.controller.BackendController
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
-
-object MongoCollection {
-  val collection = "test"
-}
-
-case class TestData(a: String, date: LocalDateTime)
-
-object TestData extends MongoLocalDateTimeFormat {
-  implicit val formats: OFormat[TestData] = Json.format[TestData]
-}
 
 class HelloWorldController @Inject()(
   cc: ControllerComponents,
