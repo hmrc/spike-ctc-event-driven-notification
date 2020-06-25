@@ -49,6 +49,12 @@
 
     <logger name="application" level="DEBUG"/>
 
+    <logger name="workers.LogginWorker1" level="INFO" />
+    <logger name="workers.LogginWorker2" level="INFO" />
+    <logger name="workers.LoggingFlow" level="INFO" />
+    <logger name="workers.EventsLockCollectionInitializer" level="INFO" />
+    <logger name="workers.MongoSource" level="INFO" />
+
     <logger name="connector" level="TRACE">
         <appender-ref ref="STDOUT"/>
     </logger>

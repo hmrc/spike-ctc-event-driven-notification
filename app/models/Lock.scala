@@ -18,9 +18,15 @@ package models
 
 import play.api.libs.json._
 
-case class Lock(eventId: String)
+case class Lock(eventId: String, worker: String)
 
 object Lock {
   implicit val writes: OWrites[Lock] =
-    OWrites({ case Lock(eventId) => Json.obj("eventId" -> eventId) })
+    OWrites({
+      case Lock(eventId, worker) =>
+        Json.obj(
+          "eventId" -> eventId,
+          "worker"  -> worker
+        )
+    })
 }

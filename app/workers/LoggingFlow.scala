@@ -24,51 +24,60 @@ import akka.stream.scaladsl.Keep
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import javax.inject.Inject
+import models.Lock
 import models.MongoCollection
 import models.TestData
 import play.api.Logger
-import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
+import reactivemongo.api.commands.LastError
 import reactivemongo.play.json.collection.JSONCollection
-import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
-import reactivemongo.akkastream.cursorProducer
-import reactivemongo.api.QueryOpts
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-class LogginWorker @Inject()(mongo: ReactiveMongoApi)(implicit executionContext: ExecutionContext, mat: Materializer) {
-  private val logger = Logger(getClass)
-  logger.error("Created")
+class LoggingFlow @Inject()(
+  mongo: ReactiveMongoApi
+)(implicit executionContext: ExecutionContext, materializer: Materializer) {
+
+  private val documentExistsErrorCode = Some(11000)
+
+  private def lockCollection =
+    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsLockCollection))
+
+  private def addLock(lock: Lock, logger: Logger): Future[Option[Unit]] =
+    lockCollection
+      .flatMap(
+        _.insert(false)
+          .one[Lock](lock)
+          .map(_ => Some(()))
+          .recover {
+            case err: LastError if err.code == documentExistsErrorCode =>
+              None
+          }
+      )
 
   private val decider: Supervision.Decider = {
     case NonFatal(_) => Supervision.resume
     case _           => Supervision.stop
   }
 
-  def source: Source[TestData, Future[NotUsed]] =
-    Source.fromFutureSource {
-      mongo.database.map(
-        _.collection[JSONCollection](MongoCollection.collection)
-          .find(Json.obj(), None)
-          .options(QueryOpts().tailable.awaitData)
-          .cursor[TestData]()
-          .documentSource()
-          .mapMaterializedValue(_ => NotUsed.notUsed())
-      )
-    }
-
-  val tap = {
-    logger.error("Logging worker started")
+  def tap(source: Source[TestData, Future[NotUsed]], logger: Logger, lockFn: String => Lock): Future[NotUsed] = {
+    logger.info(s"Started")
 
     source
-      .map {
-        testData =>
-          logger.error(s"Got a message: $testData")
-      }
+      .mapAsync(1)({
+        case t @ TestData(a, _) =>
+          val lock = lockFn(a)
+          addLock(lock, logger)
+            .map {
+              case Some(_) => logger.info(s"${logger.logger}: a=${t.a}")
+              case None    => logger.info(s"${logger.logger}: Other worker got there first")
+            }
+      })
       .toMat(Sink.ignore)(Keep.left)
       .withAttributes(ActorAttributes.supervisionStrategy(decider))
       .run()
   }
+
 }

@@ -16,43 +16,34 @@
 
 package workers
 
+import akka.NotUsed
 import akka.stream.Materializer
+import akka.stream.scaladsl.Source
 import javax.inject.Inject
 import models.MongoCollection
-import play.api.Logger
+import models.TestData
+import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
-import reactivemongo.api.indexes.Index
-import reactivemongo.api.indexes.IndexType
+import reactivemongo.api.QueryOpts
 import reactivemongo.play.json.collection.JSONCollection
+import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
+import reactivemongo.akkastream.cursorProducer
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-class EventsLockCollectionInitializer @Inject()(
-  mongo: ReactiveMongoApi
-)(implicit executionContext: ExecutionContext, mat: Materializer) {
+class MongoSource @Inject()(mongo: ReactiveMongoApi)(implicit executionContext: ExecutionContext, mat: Materializer)
+    extends (() => Source[TestData, Future[NotUsed]]) {
 
-  val logger = Logger(getClass)
-
-  private val index = Index(
-    key = Seq("eventId" -> IndexType.Ascending),
-    name = Some("eventId-index"),
-    unique = true
-  )
-
-  val started: Future[Unit] =
-    collection
-      .flatMap {
-        _.indexesManager
-          .ensure(index)
-          .map(x => {
-            logger.info("Index manager run and got: " + x)
-            x
-          })
-      }
-      .map(_ => ())
-
-  def collection =
-    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsLockCollection))
-
+  def apply(): Source[TestData, Future[NotUsed]] =
+    Source.fromFutureSource {
+      mongo.database.map(
+        _.collection[JSONCollection](MongoCollection.eventsCollection)
+          .find(Json.obj(), None)
+          .options(QueryOpts().tailable.awaitData)
+          .cursor[TestData]()
+          .documentSource()
+          .mapMaterializedValue(_ => NotUsed.notUsed())
+      )
+    }
 }
