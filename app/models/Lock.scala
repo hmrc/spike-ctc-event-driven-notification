@@ -14,21 +14,13 @@
  * limitations under the License.
  */
 
-package config
+package models
 
-import com.google.inject.AbstractModule
-import workers.EventsLockCollectionInitializer
-import workers.LogginWorker1
-import workers.LogginWorker2
+import play.api.libs.json._
 
-class Module extends AbstractModule {
+case class Lock(eventId: String)
 
-  override def configure(): Unit = {
-    bind(classOf[AppConfig]).asEagerSingleton()
-    bind(classOf[LogginWorker1]).asEagerSingleton()
-    bind(classOf[LogginWorker2]).asEagerSingleton()
-    bind(classOf[EventsLockCollectionInitializer]).asEagerSingleton()
-
-  }
-
+object Lock {
+  implicit val writes: OWrites[Lock] =
+    OWrites({ case Lock(eventId) => Json.obj("eventId" -> eventId) })
 }

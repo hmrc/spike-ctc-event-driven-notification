@@ -57,7 +57,7 @@ class HelloWorldController @Inject()(
     import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
 
     def collection: Future[JSONCollection] =
-      mongo.database.map(_.collection[JSONCollection](MongoCollection.collection))
+      mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsCollection))
 
     val jsonData = Json.toJsObject(data)
 
