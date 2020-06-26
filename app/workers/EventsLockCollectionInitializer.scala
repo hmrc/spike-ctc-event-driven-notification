@@ -53,6 +53,6 @@ class EventsLockCollectionInitializer @Inject()(
       .map(_ => ())
 
   def collection =
-    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsLockCollection))
+    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsWorkLogCollection))
 
 }

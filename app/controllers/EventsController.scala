@@ -16,14 +16,12 @@
 
 package controllers
 
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 import javax.inject.Inject
+import models.Event
 import models.MongoCollection
-import models.TestData
 import play.api.libs.json.Json
-import play.api.libs.json.OFormat
 import play.api.mvc.Action
 import play.api.mvc.AnyContent
 import play.api.mvc.ControllerComponents
@@ -36,24 +34,24 @@ import uk.gov.hmrc.play.bootstrap.controller.BackendController
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-class HelloWorldController @Inject()(
+class EventsController @Inject()(
   cc: ControllerComponents,
   mongo: ReactiveMongoApi,
   defaultActionBuilder: DefaultActionBuilder
 )(implicit ec: ExecutionContext)
     extends BackendController(cc) {
 
-  def get(value: String): Action[AnyContent] = defaultActionBuilder.async {
+  def create(info: String): Action[AnyContent] = defaultActionBuilder.async {
 
-    val newTestData = TestData(value, LocalDateTime.now())
+    val newTestData = Event(info, LocalDateTime.now())
 
     insert(newTestData).map {
       _ =>
-        Created(s"Created new record for `${newTestData.a}` with timestamp `${newTestData.date}``")
+        Created(s"Created new record for `${newTestData.info}` with timestamp `${newTestData.date}``")
     }
   }
 
-  private def insert(data: TestData): Future[WriteResult] = {
+  private def insert(data: Event): Future[WriteResult] = {
     import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
 
     def collection: Future[JSONCollection] =

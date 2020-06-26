@@ -24,9 +24,9 @@ import akka.stream.scaladsl.Keep
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import javax.inject.Inject
-import models.Lock
+import models.EventWorkLog
 import models.MongoCollection
-import models.TestData
+import models.Event
 import play.api.Logger
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.api.commands.LastError
@@ -43,13 +43,13 @@ class LoggingFlow @Inject()(
   private val documentExistsErrorCode = Some(11000)
 
   private def lockCollection =
-    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsLockCollection))
+    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsWorkLogCollection))
 
-  private def addLock(lock: Lock, logger: Logger): Future[Option[Unit]] =
+  private def startWorkLog(lock: EventWorkLog): Future[Option[Unit]] =
     lockCollection
       .flatMap(
         _.insert(false)
-          .one[Lock](lock)
+          .one[EventWorkLog](lock)
           .map(_ => Some(()))
           .recover {
             case err: LastError if err.code == documentExistsErrorCode =>
@@ -62,17 +62,18 @@ class LoggingFlow @Inject()(
     case _           => Supervision.stop
   }
 
-  def tap(source: Source[TestData, Future[NotUsed]], logger: Logger, lockFn: String => Lock): Future[NotUsed] = {
+  def tap(source: Source[Event, Future[NotUsed]], logger: Logger, workerName: String): Future[NotUsed] = {
     logger.info(s"Started")
 
     source
       .mapAsync(1)({
-        case t @ TestData(a, _) =>
-          val lock = lockFn(a)
-          addLock(lock, logger)
+        case t @ Event(a, _) =>
+          val workLog: EventWorkLog = EventWorkLog(a, workerName)
+
+          startWorkLog(workLog)
             .map {
-              case Some(_) => logger.info(s"${logger.logger}: a=${t.a}")
-              case None    => logger.info(s"${logger.logger}: Other worker got there first")
+              case Some(_) => logger.info(s"${logger.logger.getName} ACTIVE: ${t.info}") // HTTP notification
+              case None    => logger.info(s"${logger.logger.getName} ignore: ${t.info}") // Skip notification
             }
       })
       .toMat(Sink.ignore)(Keep.left)

@@ -21,7 +21,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import javax.inject.Inject
 import models.MongoCollection
-import models.TestData
+import models.Event
 import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
 import reactivemongo.api.QueryOpts
@@ -33,15 +33,15 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
 class MongoSource @Inject()(mongo: ReactiveMongoApi)(implicit executionContext: ExecutionContext, mat: Materializer)
-    extends (() => Source[TestData, Future[NotUsed]]) {
+    extends (() => Source[Event, Future[NotUsed]]) {
 
-  def apply(): Source[TestData, Future[NotUsed]] =
+  def apply(): Source[Event, Future[NotUsed]] =
     Source.fromFutureSource {
       mongo.database.map(
         _.collection[JSONCollection](MongoCollection.eventsCollection)
           .find(Json.obj(), None)
           .options(QueryOpts().tailable.awaitData)
-          .cursor[TestData]()
+          .cursor[Event]()
           .documentSource()
           .mapMaterializedValue(_ => NotUsed.notUsed())
       )

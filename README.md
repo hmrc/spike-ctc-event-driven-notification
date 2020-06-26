@@ -1,7 +1,15 @@
 
 # spike-ctc-event-driven-notification
 
-This is a placeholder README.md for a new repository
+Using Mongo for an simple event sourcing system.
+
+## Development setup
+
+- create the capped collections and set the max document count:
+  ```
+  db.createCollection("events", { capped: true, size: 64, max: 10 });
+  db.createCollection("eventsWorkLog", { capped: true, size: 64, max: 10 });
+  ``` 
 
 ### License
 

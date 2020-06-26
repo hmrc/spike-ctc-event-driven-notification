@@ -17,11 +17,13 @@
 package workers
 
 import javax.inject.Inject
-import models.Lock
+import models.EventWorkLog
 import play.api.Logger
 
 class LogginWorker2 @Inject()(mongoSource: MongoSource, loggingFlow: LoggingFlow) {
   val logger = Logger(getClass)
 
-  val asdf = loggingFlow.tap(mongoSource(), logger, Lock(_, this.getClass.getName))
+  logger.info("MongoSource: " + mongoSource.hashCode() + " LoggingFlow: " + loggingFlow.hashCode())
+
+  loggingFlow.tap(mongoSource(), logger, this.getClass.getName)
 }

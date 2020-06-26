@@ -17,6 +17,6 @@
 package models
 
 object MongoCollection {
-  val eventsCollection     = "test"
-  val eventsLockCollection = "eventsLocks"
+  val eventsCollection        = "events"
+  val eventsWorkLogCollection = "eventsWorkLog"
 }

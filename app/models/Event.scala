@@ -22,8 +22,8 @@ import controllers.MongoLocalDateTimeFormat
 import play.api.libs.json.Json
 import play.api.libs.json.OFormat
 
-case class TestData(a: String, date: LocalDateTime)
+case class Event(info: String, date: LocalDateTime)
 
-object TestData extends MongoLocalDateTimeFormat {
-  implicit val formats: OFormat[TestData] = Json.format[TestData]
+object Event extends MongoLocalDateTimeFormat {
+  implicit val formats: OFormat[Event] = Json.format[Event]
 }
