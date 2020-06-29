@@ -21,9 +21,11 @@ import java.time.LocalDateTime
 import controllers.MongoLocalDateTimeFormat
 import play.api.libs.json.Json
 import play.api.libs.json.OFormat
+import play.api.libs.json.OWrites
+import play.api.libs.json.Reads
 
-case class Event(info: String, date: LocalDateTime)
+case class Event(info: String, date: LocalDateTime, locked: Boolean)
 
 object Event extends MongoLocalDateTimeFormat {
-  implicit val formats: OFormat[Event] = Json.format[Event]
+  implicit val writes: OFormat[Event] = Json.format[Event]
 }

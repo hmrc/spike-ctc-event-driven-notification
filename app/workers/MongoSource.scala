@@ -16,34 +16,70 @@
 
 package workers
 
-import akka.NotUsed
+import akka.actor.Cancellable
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import javax.inject.Inject
-import models.MongoCollection
 import models.Event
+import models.MongoCollection
 import play.api.libs.json.Json
 import play.modules.reactivemongo.ReactiveMongoApi
-import reactivemongo.api.QueryOpts
-import reactivemongo.play.json.collection.JSONCollection
+import reactivemongo.api.WriteConcern
 import reactivemongo.play.json.ImplicitBSONHandlers.JsObjectDocumentWriter
-import reactivemongo.akkastream.cursorProducer
+import reactivemongo.play.json.collection.JSONCollection
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.duration._
 
-class MongoSource @Inject()(mongo: ReactiveMongoApi)(implicit executionContext: ExecutionContext, mat: Materializer)
-    extends (() => Source[Event, Future[NotUsed]]) {
+class MongoSource @Inject()(mongo: ReactiveMongoApi)(implicit executionContext: ExecutionContext, mat: Materializer) {
 
-  def apply(): Source[Event, Future[NotUsed]] =
-    Source.fromFutureSource {
-      mongo.database.map(
-        _.collection[JSONCollection](MongoCollection.eventsCollection)
-          .find(Json.obj(), None)
-          .options(QueryOpts().tailable.awaitData)
-          .cursor[Event]()
-          .documentSource()
-          .mapMaterializedValue(_ => NotUsed.notUsed())
+  val selector = Json.obj(
+    "locked" -> false,
+  )
+
+  val sort = Json.obj(
+    "date" -> 1
+  )
+
+  val lockModifier =
+    Json.obj(
+      "$set" -> Json.obj(
+        "locked" -> true
       )
-    }
+    )
+
+  def apply(): Source[Option[Event], Cancellable] =
+    Source
+      .tick(
+        10.second,
+        1.second,
+        Source
+          .fromIterator(
+            () =>
+              Iterator.single(
+                mongo.database
+                  .flatMap(
+                    _.collection[JSONCollection](MongoCollection.eventsCollection)
+                      .findAndUpdate(
+                        selector = selector,
+                        update = lockModifier,
+                        fetchNewObject = true,
+                        upsert = false,
+                        sort = Some(sort),
+                        fields = None,
+                        bypassDocumentValidation = false,
+                        writeConcern = WriteConcern.Default,
+                        maxTime = None,
+                        collation = None,
+                        arrayFilters = Seq()
+                      )
+                      .map(_.result[Event])
+                  )
+            )
+          )
+          .map(x => Source.fromFuture(x))
+          .flatMapConcat(identity)
+      )
+      .flatMapConcat(identity)
+
 }

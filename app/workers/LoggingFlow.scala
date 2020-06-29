@@ -16,7 +16,7 @@
 
 package workers
 
-import akka.NotUsed
+import akka.actor.Cancellable
 import akka.stream.ActorAttributes
 import akka.stream.Materializer
 import akka.stream.Supervision
@@ -24,61 +24,30 @@ import akka.stream.scaladsl.Keep
 import akka.stream.scaladsl.Sink
 import akka.stream.scaladsl.Source
 import javax.inject.Inject
-import models.EventWorkLog
-import models.MongoCollection
 import models.Event
 import play.api.Logger
 import play.modules.reactivemongo.ReactiveMongoApi
-import reactivemongo.api.commands.LastError
-import reactivemongo.play.json.collection.JSONCollection
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 class LoggingFlow @Inject()(
   mongo: ReactiveMongoApi
 )(implicit executionContext: ExecutionContext, materializer: Materializer) {
 
-  private val documentExistsErrorCode = Some(11000)
-
-  private def lockCollection =
-    mongo.database.map(_.collection[JSONCollection](MongoCollection.eventsWorkLogCollection))
-
-  private def startWorkLog(lock: EventWorkLog): Future[Option[Unit]] =
-    lockCollection
-      .flatMap(
-        _.insert(false)
-          .one[EventWorkLog](lock)
-          .map(_ => Some(()))
-          .recover {
-            case err: LastError if err.code == documentExistsErrorCode =>
-              None
-          }
-      )
-
   private val decider: Supervision.Decider = {
     case NonFatal(_) => Supervision.resume
     case _           => Supervision.stop
   }
 
-  def tap(source: Source[Event, Future[NotUsed]], logger: Logger, workerName: String): Future[NotUsed] = {
-    logger.info(s"Started")
-
+  def tap(source: Source[Option[Event], Cancellable], logger: Logger, workerName: String): Cancellable =
     source
-      .mapAsync(1)({
-        case t @ Event(a, _) =>
-          val workLog: EventWorkLog = EventWorkLog(a, workerName)
-
-          startWorkLog(workLog)
-            .map {
-              case Some(_) => logger.info(s"${logger.logger.getName} ACTIVE: ${t.info}") // HTTP notification
-              case None    => logger.info(s"${logger.logger.getName} ignore: ${t.info}") // Skip notification
-            }
-      })
+      .map {
+        case Some(Event(info, _, _)) => logger.info(s"${logger.logger.getName} Notification for info: $info") // HTTP notification
+        case None                    => logger.error("No notifications")
+      }
       .toMat(Sink.ignore)(Keep.left)
       .withAttributes(ActorAttributes.supervisionStrategy(decider))
       .run()
-  }
 
 }
