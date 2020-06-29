@@ -27,7 +27,6 @@ class Module extends AbstractModule {
     bind(classOf[AppConfig]).asEagerSingleton()
     bind(classOf[LogginWorker1]).asEagerSingleton()
     bind(classOf[LogginWorker2]).asEagerSingleton()
-    bind(classOf[EventsLockCollectionInitializer]).asEagerSingleton()
   }
 
 }

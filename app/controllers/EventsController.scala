@@ -43,7 +43,7 @@ class EventsController @Inject()(
 
   def create(info: String): Action[AnyContent] = defaultActionBuilder.async {
 
-    val newTestData = Event(info, LocalDateTime.now())
+    val newTestData = Event(info, LocalDateTime.now(), false)
 
     insert(newTestData).map {
       _ =>
